@@ -18,12 +18,13 @@ class RoleRepo {
   }
 
   async getByName(name) {
-    return await this.#execute(() => this.RoleModel.findOne({name}));
+    return await this.#execute(() => this.RoleModel.findOne({ name }));
   }
 
-  async exists(condition) {
-    return await this.#execute(() => this.RoleModel.findOne(condition));
+  async getById(roleId) {
+    return await this.#execute(() => this.RoleModel.findById(roleId))
   }
+
 }
 
 const roleRepo = new RoleRepo(RoleModel) 

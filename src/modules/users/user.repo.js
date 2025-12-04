@@ -25,11 +25,8 @@ class UserRepo {
     return this.#execute(() => this.UserModel.deleteOne({ _id: userId }));
   }
 
-  async exists(condition) {
-    return this.#execute(async () => {
-      const count = await this.UserModel.countDocuments(condition);
-      return count > 0;
-    });
+  async getByUsername(username) {
+    return this.#execute(() => this.UserModel.findOne({username}))
   }
 
   async getCount(condition) {

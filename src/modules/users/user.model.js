@@ -1,47 +1,51 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
 
-const userSchema = new mongoose.Schema({
+const userSchema = new mongoose.Schema(
+  {
     fullname: {
-        type: String,
-        minlength: 3,
-        maxlength: 60,
-        required: true
+      type: String,
+      minlength: 3,
+      maxlength: 60,
+      required: true,
     },
     username: {
-        type: String,
-        minlength: 3,
-        maxlength: 60,
-        required: true,
-        unique: true
+      type: String,
+      minlength: 3,
+      maxlength: 60,
+      required: true,
+      unique: true,
     },
     email: {
-        type: String,
-        minlength: 3,
-        maxlength: 120,
-        unique: true
+      type: String,
+      minlength: 3,
+      maxlength: 120,
+      unique: true,
+      sparse: true,
     },
     phone: {
-        type: String,
-        min: 11,
-        max: 11,
+      type: String,
+      min: 11,
+      max: 11,
     },
     password: {
-        type: String,
-        required: true
+      type: String,
+      required: true,
     },
     avatar: {
-        type: String,
-        required: false
+      type: String,
+      required: false,
     },
     role_id: {
-        type: mongoose.Types.ObjectId,
-        ref: "Roles",
-        required: true
+      type: mongoose.Types.ObjectId,
+      ref: "Roles",
+      required: true,
     },
-}, {
-    timestamps: true
-})
+  },
+  {
+    timestamps: true,
+  }
+);
 
 userSchema.pre("save", async function () {
   try {
@@ -60,7 +64,6 @@ userSchema.methods.comparePassword = async function (candidatePassword) {
 };
 
 userSchema.index({ username: 1 }, { unique: true });
-userSchema.index({ email: 1 }, { unique: true });
 
 const userModel = mongoose.model("Users" , userSchema)
 module.exports = userModel 

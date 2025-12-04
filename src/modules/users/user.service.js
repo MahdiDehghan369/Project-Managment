@@ -8,14 +8,16 @@ const roleRepo = require("./../roles/role.repo");
 
 const createUserHandler = async (data) => {
   const { username, role_id } = data;
-  const usernameExists = await userRepo.exists({ username });
+  const usernameExists = await userRepo.getByUsername(username);
   if (usernameExists) {
     throw createError(409, "Username already exists :)");
   }
-  const roleExists = await roleRepo.exists({ _id: role_id });
+  const roleExists = await roleRepo.getById(role_id);
   if (!roleExists) throw createError(404, "Role not found :(");
-  await userRepo.create(data);
-  return true;
+  const userDoc = await userRepo.create(data);
+  const user = userDoc.toObject();
+  delete user.password;
+  return user;
 };
 
 module.exports = {
