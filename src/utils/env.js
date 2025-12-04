@@ -1,0 +1,9 @@
+const path = require("path");
+require("dotenv").config({
+  path: path.join(__dirname, "../.env"),
+});
+
+module.exports = {
+  PORT: process.env.PORT,
+  MONGO_URL: process.env.MONGO_URL,
+};
