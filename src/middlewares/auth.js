@@ -11,7 +11,12 @@ async function authMiddleware(req, res, next) {
     if (!token) {
       throw createError(401, "Unauthorized (Token not provided)");
     }
-    const decoded = verifyAccessToken(token);
+    let deoded = null;
+    try {
+      decoded = verifyAccessToken(token);
+    } catch (error) {
+      next(createError(500, "Access token expired :("));
+    }
     const userId = decoded.userId;
     let user = await cacheService.get(userId);
     if (!user) {
