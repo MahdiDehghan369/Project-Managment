@@ -2,7 +2,7 @@ const createError = require('../../utils/createError');
 const Transaction = require('./../../utils/transaction');
 const userRepo = require('./../users/user.repo');
 const {generateAccessToken , generateRefreshToken} = require('./../../utils/jwt');
-const { sessionService } = require('../../services/redis');
+const { sessionService, cacheService } = require('../../services/redis');
 const cacheUser = require('../../cache/user.cache');
 
 const loginHandler = async (data) => {
@@ -46,4 +46,51 @@ const getMeHandler = async(userId) => {
   return user
 }
 
-module.exports = {loginHandler, getMeHandler}
+const refreshTokenHandler = async(userId, token) => {
+  const refreshToken = await sessionService.get(token)
+  if(refreshToken){
+    throw createError("400" , "No refresh token exists :(")
+  }
+  const accessToken = generateAccessToken(userId)
+  await generateRefreshToken(userId)
+  return accessToken
+}
+
+const logoutHandler = async (userId) => {
+  const transaction = new Transaction();
+  const userData = await cacheUser.getUserById(userId);
+  const refreshToken = await sessionService.get(userId);
+  transaction.addStep(
+    "removeUserFromRedis",
+    async () => {
+      await cacheService.del(`users:${userId}`);
+    },
+    async () => {
+      if (userData) {
+          await cacheService.set(`users:${userId}`, userData, 3600);
+      }
+    }
+  );
+
+  transaction.addStep(
+    "removeTokenFromRedis",
+    async () => {
+      await sessionService.del(userId);
+    },
+    async () => {
+      if (refreshToken) {
+          await sessionService.set(userId, refreshToken, 7 * 24 * 3600);
+      }
+    }
+  );
+  await transaction.executeSequential();
+};
+
+
+
+module.exports = {
+  loginHandler,
+  getMeHandler,
+  refreshTokenHandler,
+  logoutHandler,
+};

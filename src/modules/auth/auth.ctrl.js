@@ -1,4 +1,4 @@
-const { loginHandler, getMeHandler } = require("./auth.service");
+const { loginHandler, getMeHandler, refreshTokenHandler, logoutHandler } = require("./auth.service");
 const { successResponse } = require("./../../utils/response");
 
 const login = async (req, res, next) => {
@@ -26,7 +26,31 @@ const getMe = async (req, res, next) => {
   }
 }
 
+const refreshToken = async (req, res, next) => {
+  try {
+    const userId = req.user._id
+    const token = req.cookies.RefreshToken
+    const accessToken = await refreshTokenHandler(userId , token)
+    return successResponse(res, 200 , "Token refreshed successfully :)" , {accessToken})
+  } catch (error) {
+    next(error)
+  }
+}
+
+const logout = async (req, res, next) => {
+  try {
+    const userId = req.user._id
+    await logoutHandler(userId)
+    res.clearCookie("RefreshToken")
+    return successResponse(res, 200 , "Logout successfully :)")
+  } catch (error) {
+    next(error)
+  }
+}
+
 module.exports = {
   login,
   getMe,
+  refreshToken,
+  logout,
 };
