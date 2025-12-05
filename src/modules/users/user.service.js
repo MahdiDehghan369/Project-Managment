@@ -25,7 +25,6 @@ const createUserHandler = async (data) => {
 
   transaction.addStep("createUser" , async() => {
     user = await userRepo.create(data)
-    throw new Error();
   } , async() => {
     if(user && user?._id){
       await userRepo.remove(user._id)
