@@ -111,6 +111,7 @@ const removeUserHandler = async (userId) => {
     },
     async () => {
       await userRepo.create(userBackup, { skipHashPassword : true});
+      
     }
   );
 
