@@ -1,4 +1,4 @@
-const { createUserHandler, getUsersHandler, getUserHandler, editUserByAdminHandler, removeUserHandler } = require("./user.service");
+const { createUserHandler, getUsersHandler, getUserHandler, editUserByAdminHandler, removeUserHandler, editUserHandler } = require("./user.service");
 const {successResponse} = require('./../../utils/response');
 const createError = require("../../utils/createError");
 
@@ -43,6 +43,18 @@ const editUserByAdmin = async(req, res, next) => {
     }
 }
 
+const editUser = async(req, res, next) => {
+    try {
+        const userId = req.user._id
+        const body = req.body
+        const avatar = req.file
+        const result = await editUserHandler(userId , body , avatar)
+        return successResponse(res, 200 , "User edited successfully :)" , {user: result})
+    } catch (error) {
+        next(error)
+    }
+}
+
 const removeUser = async(req, res, next) => {
     try {
         const {userId} = req.params
@@ -63,4 +75,5 @@ module.exports = {
   getUser,
   editUserByAdmin,
   removeUser,
+  editUser
 };

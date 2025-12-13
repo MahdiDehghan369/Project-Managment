@@ -21,13 +21,20 @@ class UserRepo {
     return this.UserModel.create(data);
   }
 
-  async getById(userId) {
-    return this.#execute(() =>
-      this.UserModel.findById(userId).populate(
-        "role_id",
-        "-__v -createdAt -updatedAt"
-      )
+  async getById(userId, options = {}) {
+    let query = this.UserModel.findById(userId).populate(
+      "role_id",
+      "-__v -createdAt -updatedAt"
     );
+    if (options.unSelect) {
+      const fields = options.unSelect
+        .split(" ")
+        .map((field) => `-${field}`)
+        .join(" ");
+      query = query.select(fields);
+    }
+
+    return this.#execute(() => query);
   }
 
   async remove(userId) {
@@ -36,6 +43,14 @@ class UserRepo {
 
   async getByUsername(username) {
     return this.#execute(() => this.UserModel.findOne({ username }));
+  }
+
+  async getByEmail(email) {
+    return this.#execute(() => this.UserModel.findOne({ email }));
+  }
+
+  async getByPhone(phone) {
+    return this.#execute(() => this.UserModel.findOne({ phone }));
   }
 
   async getCount(condition) {

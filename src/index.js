@@ -1,7 +1,7 @@
 const express = require("express");
 const app = express();
 const cookieParser = require("cookie-parser");
-
+const path = require('path');
 const connectToMongoDB = require("./config/mongo");
 const env = require("./utils/env");
 const seedRoles = require("./seed/roles.seed");
@@ -14,7 +14,8 @@ const errorHandler = require("./middlewares/errorHandler");
 // set default middlewares
 app.use(cookieParser());
 app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
+app.use(express.urlencoded({ extended: true }));
+app.use(express.static(path.join(__dirname , ".." , "public")))
 
 // set routes
 function setRoutes() {

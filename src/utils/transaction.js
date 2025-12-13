@@ -31,11 +31,12 @@ class Transaction {
       });
 
       const results = await Promise.allSettled(tasks);
-      const hasError = results.some((r) => r.status === "rejected");
+      const hasError = results.find((r) => r.status === "rejected");
       this.executed = executed;
+      console.log(hasError)
       if (hasError) {
         await this.rollback();
-        throw new Error("Parallel execution failed");
+        throw new Error(`Parallel execution failed => ${hasError.message}`);
       }
     } catch (error) {
       this.executed = executed;
