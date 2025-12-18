@@ -24,6 +24,14 @@ class ProjectRepo {
     async remove(projectId){
         return this.#execute(() => this.ProjectModel.deleteOne({_id: projectId}));
     }
+
+    async updateById(projectId , data){
+         return this.#execute(() =>
+           this.ProjectModel.findByIdAndUpdate(projectId, data, { new: true })
+             .populate("createdBy", "username fullname avatar")
+             .select("-__v")
+         );
+    }
 }
 
 const projectRepo = new ProjectRepo(ProjectModel);

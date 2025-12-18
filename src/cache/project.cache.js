@@ -2,7 +2,7 @@ const projectRepo = require("./../modules/project/project.repo");
 const { cacheService } = require("./../services/redis");
 
 const getProjectById = async (projectId) => {
-  const key = `projets:${projectId}`;
+  const key = `projects:${projectId}`;
   const projectRedis = await cacheService.get(key);
   if (projectRedis) return projectRedis;
   const project = await projectRepo.getById(projectId);

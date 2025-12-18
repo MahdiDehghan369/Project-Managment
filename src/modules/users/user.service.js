@@ -1,7 +1,7 @@
 const createError = require("../../utils/createError");
 const Transaction = require("./../../utils/transaction");
 const cacheUser = require("./../../cache/user.cache");
-const path = require("path");
+const getPublicPath = require("./../../utils/getPublicPath");
 
 // User Repository
 const userRepo = require("./user.repo");
@@ -148,14 +148,7 @@ const editUserHandler = async (userId, data, avatarFile) => {
     },
     async () => {
       if (avatarPath) {
-        const newAvatarPath = path.join(
-          __dirname,
-          "..",
-          "..",
-          "..",
-          "public",
-          avatarPath
-        );
+        const newAvatarPath = getPublicPath(avatarPath);
         await unlinkAsync(newAvatarPath);
       }
     }
@@ -175,14 +168,7 @@ const editUserHandler = async (userId, data, avatarFile) => {
       });
 
       if (avatarPath) {
-        const newAvatarPath = path.join(
-          __dirname,
-          "..",
-          "..",
-          "..",
-          "public",
-          avatarPath
-        );
+        const newAvatarPath = getPublicPath(avatarPath);
         await unlinkAsync(newAvatarPath);
       }
     }
@@ -209,14 +195,7 @@ const editUserHandler = async (userId, data, avatarFile) => {
   await sequentialTransaction.executeSequential();
 
   if (avatarPath && user.avatar) {
-    const oldAvatarPath = path.join(
-      __dirname,
-      "..",
-      "..",
-      "..",
-      "public",
-      user.avatar
-    );
+    const oldAvatarPath = getPublicPath(user.avatar);
     await unlinkAsync(oldAvatarPath);
   }
 
@@ -233,6 +212,20 @@ const removeUserHandler = async (userId) => {
   const transaction = new Transaction();
 
   transaction.addStep(
+    "removeUserFromRedis",
+    async () => {
+      await cacheService.del(`users:${userId}`);
+    }
+  );
+
+  transaction.addStep(
+    "removeTokenFromRedis",
+    async () => {
+      await sessionService.del(userId);
+    }
+  );
+
+  transaction.addStep(
     "removeUserFromDB",
     async () => {
       await userRepo.remove(userId);
@@ -242,28 +235,12 @@ const removeUserHandler = async (userId) => {
     }
   );
 
-  transaction.addStep(
-    "removeUserFromRedis",
-    async () => {
-      await cacheService.del(`users:${userId}`);
-      throw new Error();
-    },
-    async () => {
-      await cacheService.set(`users:${userId}`, userBackup, 3600);
-    }
-  );
+  transaction.addStep("removeAvatar", async () => {
+    if (!user.avatar) return;
+    const filePath = getPublicPath(user.avatar);
+    await unlinkAsync(filePath);
+  });
 
-  transaction.addStep(
-    "removeTokenFromRedis",
-    async () => {
-      await sessionService.del(userId);
-    },
-    async () => {
-      if (refreshToken) {
-        await sessionService.set(userId, refreshToken, 7 * 24 * 3600);
-      }
-    }
-  );
   await transaction.executeSequential();
   return true;
 };
