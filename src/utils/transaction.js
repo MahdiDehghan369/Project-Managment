@@ -1,3 +1,5 @@
+const createError = require("./createError");
+
 class Transaction {
   constructor() {
     this.steps = [];
@@ -36,7 +38,7 @@ class Transaction {
       console.log(hasError)
       if (hasError) {
         await this.rollback();
-        throw new Error(`Parallel execution failed => ${hasError.message}`);
+        throw createError(hasError.reason.statusCode || 500 , hasError.reason.message)
       }
     } catch (error) {
       this.executed = executed;

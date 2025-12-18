@@ -8,7 +8,9 @@ const userRepo = require("./user.repo");
 // Role Repository
 const roleRepo = require("./../roles/role.repo");
 const { cacheService, sessionService } = require("../../services/redis");
-const { rmdirAsync } = require("../../utils/asyncFs");
+const { unlinkAsync } = require("../../utils/asyncFs");
+const { saveFile } = require("../../middlewares/imageUploader");
+const normalizaUserData = require("../../utils/normalizeUserData");
 
 const createUserHandler = async (data) => {
   const { username, role_id } = data;
@@ -104,16 +106,16 @@ const editUserByAdminHandler = async (userId, data) => {
   return updatedUser;
 };
 
-const editUserHandler = async (userId, data, avatar) => {
+const editUserHandler = async (userId, data, avatarFile) => {
   const { email, phone } = data;
-
   const user = await userRepo.getById(userId);
   if (!user) throw createError(404, "User not found :)");
 
   const updatePayload = {};
-  const validationTx = new Transaction();
+  let avatarPath;
 
-  validationTx.addStep("check-email", async () => {
+  const tx = new Transaction();
+  tx.addStep("validate-email", async () => {
     if (!email || email === user.email) return;
     const exists = await userRepo.getByEmail(email);
     if (exists && exists._id.toString() !== userId.toString()) {
@@ -121,25 +123,46 @@ const editUserHandler = async (userId, data, avatar) => {
     }
   });
 
-  validationTx.addStep("check-phone", async () => {
+  tx.addStep("validate-phone", async () => {
     if (!phone || phone === user.phone) return;
     const exists = await userRepo.getByPhone(phone);
     if (exists && exists._id.toString() !== userId.toString()) {
       throw createError(409, "Phone number already exists :)");
     }
   });
-  await validationTx.executeParallel();
 
-  const mutationTx = new Transaction();
-  mutationTx.addStep("build-payload", async () => {
-    if (email && email !== user.email) updatePayload.email = email;
-    if (phone && phone !== user.phone) updatePayload.phone = phone;
+  await tx.executeParallel()
 
-    if (avatar?.filename) {
-      updatePayload.avatar = `${avatar.fieldname}/${avatar.filename}`;
+  const sequentialTransaction = new Transaction()
+  let newUserInfo = null
+
+  sequentialTransaction.addStep(
+    "build-payload",
+    async () => {
+      if (email && email !== user.email) updatePayload.email = email;
+      if (phone && phone !== user.phone) updatePayload.phone = phone;
+      if (avatarFile) {
+        avatarPath = await saveFile(avatarFile , "avatar")
+         await userRepo.updateById(userId, {avatar: avatarPath});
+      }
+
+    },
+    async () => {
+      if (avatarPath) {
+        const newAvatarPath = path.join(
+          __dirname,
+          "..",
+          "..",
+          "..",
+          "public",
+          avatarPath
+        );
+        await unlinkAsync(newAvatarPath);
+      }
     }
-  });
-  mutationTx.addStep(
+  );
+
+  sequentialTransaction.addStep(
     "update-user",
     async () => {
       if (!Object.keys(updatePayload).length) return;
@@ -151,14 +174,46 @@ const editUserHandler = async (userId, data, avatar) => {
         phone: user.phone,
         avatar: user.avatar,
       });
+
+      if (avatarPath) {
+        const newAvatarPath = path.join(
+          __dirname,
+          "..",
+          "..",
+          "..",
+          "public",
+          avatarPath
+        );
+        await unlinkAsync(newAvatarPath);
+      }
     }
   );
-  await mutationTx.executeSequential();
-  console.log(path.join(__dirname, "..", "..", "public", user.avatar));
-  await rmAsync(path.join(__dirname, "..", "..", "..", "public", user.avatar));
-  return Object.keys(updatePayload).length
-    ? await userRepo.getById(userId, { unSelect: "password" })
-    : user;
+
+  sequentialTransaction.addStep("get-user" , async() => {
+    newUserInfo = await userRepo.getById(userId);
+  })
+
+  sequentialTransaction.addStep("update-user-cache" , async() => {
+    await cacheService.set(`users:${userId}` , normalizaUserData(newUserInfo) , 3600)
+  } , async() => {
+    await cacheService.set(`users:${userId}`, normalizaUserData(user), 3600);
+  }) 
+
+  await sequentialTransaction.executeSequential(); 
+  
+  if (avatarPath && user.avatar) {
+    const oldAvatarPath = path.join(
+      __dirname,
+      "..",
+      "..",
+      "..",
+      "public",
+      user.avatar
+    );
+    await unlinkAsync(oldAvatarPath);
+  }
+
+  return newUserInfo
 };
 
 const removeUserHandler = async (userId) => {
@@ -206,7 +261,35 @@ const removeUserHandler = async (userId) => {
   return true;
 };
 
+const assignRoleHandler = async (userId , roleId) => {
+  const transaction = new Transaction()
+  let role , user
+  transaction.addStep("getRole" , async() => {
+    role = await roleRepo.getById(roleId)
+    if(!role){
+      throw createError(404, "Role not found :(")
+    }
+  })
+  transaction.addStep("getUser", async () => {
+     user = await cacheService.get(`users:${userId}`);
+     if (!user) {
+       user = await userRepo.getById(userId);
+       if (!user) {
+         throw createError(404, "User not found :(");
+       }
+       await cacheService.set(`users:${userId}`, normalizaUserData(user), 3600);
+     }
+  });
 
+  await transaction.executeParallel()
+
+  let newUser = null
+  if(user.role_id.toString() !== roleId.toString()){
+    newUser = await userRepo.updateById(userId , {role_id: roleId})
+    await cacheService.set(`users:${userId}` , normalizaUserData(newUser) , 3600)
+  }
+  return newUser ?? user
+}
 
 module.exports = {
   createUserHandler,
@@ -215,4 +298,5 @@ module.exports = {
   editUserByAdminHandler,
   editUserHandler,
   removeUserHandler,
+  assignRoleHandler,
 };

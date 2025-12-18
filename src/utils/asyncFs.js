@@ -29,8 +29,27 @@ const mkdirAsync = async (path) => {
     throw createError(500, error.message);
   }
 };
+
+const writeFileAsync = async(path , content) => {
+    try {
+        await fs.writeFile(path , content)
+    } catch (error) {
+        throw createError(error.statusCode || 500 , error.message)
+    }
+}
+
+const unlinkAsync = async (path) => {
+  try {
+    await fs.unlink(path);
+  } catch (error) {
+    throw createError(error.statusCode || 500, error.message);
+  }
+};
+
 module.exports = {
   existsAsync,
   rmAsync,
   mkdirAsync,
+  writeFileAsync,
+  unlinkAsync,
 };

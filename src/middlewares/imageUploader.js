@@ -1,44 +1,34 @@
 const multer = require("multer");
 const path = require("path");
-const fs = require("fs");
-const { existsAsync, mkdirAsync } = require("../utils/asyncFs");
+const fs = require("fs/promises");
 
-const publicFolderPath = path.join(__dirname , ".." , ".." , "public")
+const publicFolderPath = path.join(__dirname, "..", "..", "public");
 
-if(!fs.existsSync(publicFolderPath)){
-    fs.mkdirSync(publicFolderPath)
-}
+const storage = multer.memoryStorage();
 
-const multerStorage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    if (file.fieldname === "avatar") {
-      const avatarFolderPath = path.join(publicFolderPath, file.fieldname);
-      if (!fs.existsSync(avatarFolderPath)) {
-        fs.mkdirSync(avatarFolderPath, { recursive: true });
-      }
-      cb(null, avatarFolderPath);
-    }
-  },
-  filename: function (req, file, cb) {
-    const ext = path.extname(file.originalname);
-    const filename = `${file.fieldname}-${Date.now()}${ext}`;
-    cb(null, filename);
-  },
-});
-
-const multerFilter = (req, file, cb) => {
+const fileFilter = (req, file, cb) => {
   const allowedMimes = ["image/png", "image/jpeg", "image/jpg", "image/webp"];
-  if (allowedMimes.includes(file.mimetype)) {
-    cb(null, true);
-  } else {
-    cb(new Error("Invalid file type."), false);
-  }
+  if (allowedMimes.includes(file.mimetype)) cb(null, true);
+  else cb(new Error("Invalid file type."), false);
 };
 
-const imageUploader = multer({
-  storage: multerStorage,
-  fileFilter: multerFilter,
-  limits: { fileSize: 2 * 1024 * 1024 },
+const upload = multer({
+  storage,
+  fileFilter,
+  limits: { fileSize: 2 * 1024 * 1024 }, // 2MB
 });
 
-module.exports = imageUploader
+const saveFile = async (file , folderName) => {
+  if (!file) return null;
+
+  const folderPath = path.join(publicFolderPath, folderName);
+  await fs.mkdir(folderPath, { recursive: true });
+
+  const filename = `${folderName}-${Date.now()}${path.extname(file.originalname)}`;
+  const filePath = path.join(folderPath, filename);
+
+  await fs.writeFile(filePath, file.buffer);
+  return `${folderName}/${filename}`
+};
+
+module.exports = { upload, saveFile };

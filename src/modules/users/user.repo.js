@@ -84,7 +84,7 @@ class UserRepo {
   async updateById(userId, data) {
     return this.#execute(() =>
       this.UserModel.findByIdAndUpdate(userId, data, { new: true }).select(
-        "-password -__v"
+        "-__v"
       )
     );
   }
