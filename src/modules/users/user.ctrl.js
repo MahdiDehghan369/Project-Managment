@@ -73,6 +73,9 @@ const assignRole = async(req, res, next) => {
     try {
         const {role_id} = req.body
         const {userId} = req.params
+        if(userId.toString() === req.user._id.toString()){
+            throw createError(400 , "You can't change your role :|")
+        }
         const result = await assignRoleHandler(userId, role_id)
         return successResponse(res , 200 , {user: result})
     } catch (error) {

@@ -18,7 +18,7 @@ class UserRepo {
     if (!options.skipHashPassword && data.password) {
       data.password = await bcrypt.hash(data.password, 10);
     }
-    return this.UserModel.create(data);
+    return this.#execute(() => this.UserModel.create(data))
   }
 
   async getById(userId, options = {}) {
@@ -83,7 +83,7 @@ class UserRepo {
 
   async updateById(userId, data) {
     return this.#execute(() =>
-      this.UserModel.findByIdAndUpdate(userId, data, { new: true }).select(
+      this.UserModel.findByIdAndUpdate(userId, data, { new: true }).populate("role_id" , "-__v -createdAt -updatedAt").select(
         "-__v"
       )
     );

@@ -1,7 +1,7 @@
 const createError = require("../../utils/createError");
 const Transaction = require("./../../utils/transaction");
 const cacheUser = require("./../../cache/user.cache");
-const path = require('path');
+const path = require("path");
 
 // User Repository
 const userRepo = require("./user.repo");
@@ -131,10 +131,10 @@ const editUserHandler = async (userId, data, avatarFile) => {
     }
   });
 
-  await tx.executeParallel()
+  await tx.executeParallel();
 
-  const sequentialTransaction = new Transaction()
-  let newUserInfo = null
+  const sequentialTransaction = new Transaction();
+  let newUserInfo = null;
 
   sequentialTransaction.addStep(
     "build-payload",
@@ -142,10 +142,9 @@ const editUserHandler = async (userId, data, avatarFile) => {
       if (email && email !== user.email) updatePayload.email = email;
       if (phone && phone !== user.phone) updatePayload.phone = phone;
       if (avatarFile) {
-        avatarPath = await saveFile(avatarFile , "avatar")
-         await userRepo.updateById(userId, {avatar: avatarPath});
+        avatarPath = await saveFile(avatarFile, "avatar");
+        await userRepo.updateById(userId, { avatar: avatarPath });
       }
-
     },
     async () => {
       if (avatarPath) {
@@ -189,18 +188,26 @@ const editUserHandler = async (userId, data, avatarFile) => {
     }
   );
 
-  sequentialTransaction.addStep("get-user" , async() => {
+  sequentialTransaction.addStep("get-user", async () => {
     newUserInfo = await userRepo.getById(userId);
-  })
+  });
 
-  sequentialTransaction.addStep("update-user-cache" , async() => {
-    await cacheService.set(`users:${userId}` , normalizaUserData(newUserInfo) , 3600)
-  } , async() => {
-    await cacheService.set(`users:${userId}`, normalizaUserData(user), 3600);
-  }) 
+  sequentialTransaction.addStep(
+    "update-user-cache",
+    async () => {
+      await cacheService.set(
+        `users:${userId}`,
+        normalizaUserData(newUserInfo),
+        3600
+      );
+    },
+    async () => {
+      await cacheService.set(`users:${userId}`, normalizaUserData(user), 3600);
+    }
+  );
 
-  await sequentialTransaction.executeSequential(); 
-  
+  await sequentialTransaction.executeSequential();
+
   if (avatarPath && user.avatar) {
     const oldAvatarPath = path.join(
       __dirname,
@@ -213,7 +220,7 @@ const editUserHandler = async (userId, data, avatarFile) => {
     await unlinkAsync(oldAvatarPath);
   }
 
-  return newUserInfo
+  return newUserInfo;
 };
 
 const removeUserHandler = async (userId) => {
@@ -261,35 +268,36 @@ const removeUserHandler = async (userId) => {
   return true;
 };
 
-const assignRoleHandler = async (userId , roleId) => {
-  const transaction = new Transaction()
-  let role , user
-  transaction.addStep("getRole" , async() => {
-    role = await roleRepo.getById(roleId)
-    if(!role){
-      throw createError(404, "Role not found :(")
+const assignRoleHandler = async (userId, roleId) => {
+  const transaction = new Transaction();
+  let role, user;
+  transaction.addStep("getRole", async () => {
+    role = await roleRepo.getById(roleId);
+    if (!role) {
+      throw createError(404, "Role not found :(");
     }
-  })
+  });
   transaction.addStep("getUser", async () => {
-     user = await cacheService.get(`users:${userId}`);
-     if (!user) {
-       user = await userRepo.getById(userId);
-       if (!user) {
-         throw createError(404, "User not found :(");
-       }
-       await cacheService.set(`users:${userId}`, normalizaUserData(user), 3600);
-     }
+    user = await cacheService.get(`users:${userId}`);
+    if (!user) {
+      user = await userRepo.getById(userId);
+      if (!user) {
+        throw createError(404, "User not found :(");
+      }
+      await cacheService.set(`users:${userId}`, normalizaUserData(user), 3600);
+    }
   });
 
-  await transaction.executeParallel()
+  await transaction.executeParallel();
 
-  let newUser = null
-  if(user.role_id.toString() !== roleId.toString()){
-    newUser = await userRepo.updateById(userId , {role_id: roleId})
-    await cacheService.set(`users:${userId}` , normalizaUserData(newUser) , 3600)
+  let newUser = null;
+  if (user.role_id.toString() !== roleId.toString()) {
+    newUser = await userRepo.updateById(userId, { role_id: roleId });
+    await cacheService.set(`users:${userId}`, normalizaUserData(newUser), 3600);
   }
-  return newUser ?? user
-}
+  const userData = newUser ? normalizaUserData(newUser) : null;
+  return userData ?? user;
+};
 
 module.exports = {
   createUserHandler,

@@ -9,6 +9,7 @@ const seedUsers = require("./seed/users.seed");
 
 const usersRouter = require('./modules/users/user.route');
 const authRouter = require('./modules/auth/auth.route');
+const projectRouter = require('./modules/project/project.route');
 const errorHandler = require("./middlewares/errorHandler");
 
 // set default middlewares
@@ -21,6 +22,7 @@ app.use(express.static(path.join(__dirname , ".." , "public")))
 function setRoutes() {
   app.use("/users" , usersRouter)
   app.use("/auth" , authRouter)
+  app.use("/projects" , projectRouter)
 
   // set error handelr
   app.use(errorHandler)

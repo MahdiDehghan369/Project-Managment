@@ -1,6 +1,7 @@
 const userRepo = require('./../modules/users/user.repo');
 const {cacheService} = require('./../services/redis');
 const normalizeUserData = require('./../utils/normalizeUserData');
+
 const getUserById = async (userId) => {
     const key = `users:${userId}`
     const userRedis = await cacheService.get(key);

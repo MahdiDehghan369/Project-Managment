@@ -24,7 +24,6 @@ class RoleRepo {
   async getById(roleId) {
     return await this.#execute(() => this.RoleModel.findById(roleId))
   }
-
 }
 
 const roleRepo = new RoleRepo(RoleModel) 
