@@ -8,6 +8,7 @@ const { getProjectById } = require("../../cache/project.cache");
 const { getUserById } = require("../../cache/user.cache");
 const getPublicPath = require("../../utils/getPublicPath");
 const { cacheService } = require("../../services/redis");
+const projectMemberRepo = require("../project_members/project-members.repo");
 
 const createProjectHandler = async (userId, data, coverFile) => {
   const transaction = new Transaction();
@@ -163,14 +164,14 @@ const editProjectHandler = async (projectId, data, coverFile) => {
       updatedProject,
       60 * 60 * 24
     );
-  } , async() => {
-    await cacheService.set(`projects:${projectId}`, project , 60 * 60 * 24);
+  }, async () => {
+    await cacheService.set(`projects:${projectId}`, project, 60 * 60 * 24);
   });
 
   transaction.addStep("removeOldCover", async () => {
     if (coverFile && oldCover) {
       const filePath = getPublicPath(oldCover);
-        await unlinkAsync(filePath)
+      await unlinkAsync(filePath)
     }
   });
 
@@ -178,10 +179,126 @@ const editProjectHandler = async (projectId, data, coverFile) => {
   return updatedProject;
 };
 
+const getProjectsHandler = async (query) => {
+  const { page = 1, limit = 10, search = "", status, createdBy } = query
+  const pageNum = parseInt(page, 10)
+  const pageLimit = parseInt(limit, 10)
+  const { projects, total } = await projectRepo.getProjects({
+    page: pageNum,
+    limit: pageLimit,
+    search,
+    status,
+    createdBy
+  })
+  return {
+    projects: projects,
+    meta: {
+      total,
+      page: pageNum,
+      limit: pageLimit,
+      totalPages: Math.ceil(total / pageLimit),
+    },
+  }
+
+}
+
+const addUserToProjectHandler = async (userId, permissions, projectId) => {
+  const transaction = new Transaction();
+  let projectMember = null;
+
+  transaction.addStep("checkExists", async () => {
+    const [user, project] = await Promise.all([
+      getUserById(userId),
+      getProjectById(projectId)
+    ]);
+
+    if (!user) throw createError(404, "User not found :(");
+    if (!project) throw createError(404, "Project not found :(");
+  });
+
+  transaction.addStep(
+    "addUser",
+    async () => {
+      projectMember = await projectMemberRepo.create({ userId, projectId, permissions });
+    },
+    async () => {
+      if (projectMember) {
+        await projectMemberRepo.removeById(projectMember._id);
+      }
+    }
+  );
+
+  await transaction.executeSequential();
+  return projectMember;
+};
+
+const removeUserFromProjectHandler = async (userId, projectId) => {
+  const transaction = new Transaction();
+  let projectMember = null;
+
+  transaction.addStep("checkExists", async () => {
+    const [user, project] = await Promise.all([
+      getUserById(userId),
+      getProjectById(projectId)
+    ]);
+
+    if (!user) throw createError(404, "User not found :(");
+    if (!project) throw createError(404, "Project not found :(");
+
+    projectMember = await projectMemberRepo.getByUserIdAndProjectId(userId, projectId);
+    if (!projectMember) throw createError(404, "Project member not found :(");
+  });
+
+  transaction.addStep(
+    "removeMember",
+    async () => {
+      await projectMemberRepo.removeById(projectMember._id);
+    },
+    async () => {
+      await projectMemberRepo.create({
+        userId,
+        projectId,
+        permissions: projectMember.permissions,
+      });
+    }
+  );
+
+  await transaction.executeSequential();
+
+  return true;
+};
+
+const getProjectMembersHandler = async(projectId) => {
+  const project = await getProjectById(projectId)
+  if(!project){
+    throw createError(404 , "Project not found :)")
+  }
+  const members = await projectMemberRepo.getMembers(projectId)
+  return members
+}
+
+const getUserProjectPermissionsHandler = async(projectId , userId) => {
+  const project = await getProjectById(projectId)
+  if(!project) {
+    throw createError(404 , "Project not found :)")
+  }
+
+  const isMemberOfProject = await projectMemberRepo.getByUserIdAndProjectId(userId , projectId)
+  if(!isMemberOfProject || project._id.toString() !== isMemberOfProject._id.toString()){
+    throw createError(400 , "User not member of this project :)")
+  }
+
+  return isMemberOfProject.permissions
+}
 
 module.exports = {
   createProjectHandler,
   getProjectHandler,
   removeProjectHandler,
   editProjectHandler,
+  getProjectsHandler,
+  addUserToProjectHandler,
+  removeUserFromProjectHandler,
+  getProjectMembersHandler,
+  getUserProjectPermissionsHandler
 };

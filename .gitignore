@@ -1,0 +1,66 @@
+# Node modules
+node_modules/
+
+# npm logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+
+# Environment variables
+.env
+src/.env
+.env.*.local
+
+
+# ---------------------------
+# Build / output folders
+# ---------------------------
+dist/
+build/
+out/
+public/
+
+# ---------------------------
+# System files
+# ---------------------------
+.DS_Store
+Thumbs.db
+
+# ---------------------------
+# IDEs / Editors
+# ---------------------------
+# VSCode
+.vscode/
+.history/
+*.code-workspace
+
+# JetBrains IDEs
+.idea/
+*.iml
+
+# ---------------------------
+# Logs
+# ---------------------------
+logs/
+*.log
+*.log.*
+
+# ---------------------------
+# Temporary / cache files
+# ---------------------------
+*.tmp
+*.temp
+*.swp
+*.swo
+*.bak
+*.old
+
+# ---------------------------
+# Coverage
+# ---------------------------
+coverage/
+.nyc_output/
+jest-coverage/
+

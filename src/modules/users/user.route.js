@@ -7,6 +7,7 @@ const {
   removeUser,
   editUser,
   assignRole,
+  getUserProjects,
 } = require("./user.ctrl");
 const authMiddleware = require("../../middlewares/auth");
 const checkPermission = require("../../middlewares/checkPermission");
@@ -24,5 +25,7 @@ router
   .put(authMiddleware, checkPermission("edit.user"), editUserByAdmin)
   .delete(authMiddleware , checkPermission("remove.user") , removeUser)
 router.route("/:userId/role").patch(authMiddleware , checkPermission("assign.role") , assignRole)
+
+router.route("/projects").get(authMiddleware, checkPermission("get.own.projects") , getUserProjects)
 
 module.exports = router;

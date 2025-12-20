@@ -276,6 +276,36 @@ const assignRoleHandler = async (userId, roleId) => {
   return userData ?? user;
 };
 
+const getUserProjectsHandler = async (query) => {
+  const { page = 1, limit = 10, search = "", status, createdBy } = query
+  const pageNum = parseInt(page, 10)
+  const pageLimit = parseInt(limit, 10)
+
+  if (createdBy) {
+    const user = cacheUser.getUserById(createdBy)
+    if (!user) {
+      throw createError(404, "User not found :(")
+    }
+  }
+
+  const { projects, total } = await projectRepo.getProjects({
+    page: pageNum,
+    limit: pageLimit,
+    search,
+    createdBy,
+    status
+  })
+  return {
+    projects: projects,
+    meta: {
+      total,
+      page: pageNum,
+      limit: pageLimit,
+      totalPages: Math.ceil(total / pageLimit),
+    },
+  }
+}
+
 module.exports = {
   createUserHandler,
   getUsersHandler,
@@ -284,4 +314,5 @@ module.exports = {
   editUserHandler,
   removeUserHandler,
   assignRoleHandler,
+  getUserProjectsHandler
 };
